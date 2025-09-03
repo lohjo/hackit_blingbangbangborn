@@ -1,3 +1,3 @@
 import os
 
-print(os.environ.get("GROQ_API_KEY"))
+print(os.environ.get("REPLICATE_API_TOKEN"))
