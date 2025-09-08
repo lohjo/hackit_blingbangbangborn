@@ -198,7 +198,7 @@ async def generate_story_from_image(content: StoryRequest):
         story = chat_completion.choices[0].message.content
         print(f"Generated story: {story}")
         return JSONResponse(content={"story": story})
-    except Exception as e:
+    except Exception as e:  
         print(f"Error generating story from the image: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
