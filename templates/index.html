@@ -1,34 +1,135 @@
-<div class="main-content">
-    <div class="input-section">
-        <h2 class="section-title"><i class="fas fa-edit"></i> Create Your Image</h2>
-        
-        <div class="form-group">
-            <label for="topic">Topic</label>
-            <input type="text" id="topic" placeholder="Enter the topic for your image...">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Educational Poster Generator</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-graduation-cap"></i> Educational Poster Generator</h1>
+            <p>Create AI-powered educational posters optimized for ESP32 OLED displays</p>
+        </header>
+
+        <div class="main-content">
+            <div class="input-section">
+                <h2 class="section-title"><i class="fas fa-edit"></i> Create Your Poster</h2>
+                
+                <div class="form-group">
+                    <label for="topic">
+                        <i class="fas fa-lightbulb"></i> Educational Topic
+                    </label>
+                    <input type="text" id="topic" placeholder="e.g., Photosynthesis, Solar System, Water Cycle...">
+                    <small style="color: #666; font-size: 0.85rem;">Enter the subject you want to create a poster about</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="age-group">
+                        <i class="fas fa-users"></i> Target Age Group
+                    </label>
+                    <select id="age-group">
+                        <option value="0-6">Ages 0-6 (Kindergarten - Simple concepts)</option>
+                        <option value="7-12" selected>Ages 7-12 (Elementary - Moderate detail)</option>
+                        <option value="13-16">Ages 13-16 (High School - Advanced concepts)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="model">
+                        <i class="fas fa-robot"></i> AI Generation Model
+                    </label>
+                    <select id="model">
+                        <option value="flux" selected>FLUX.1-schnell (Recommended - FREE)</option>
+                        <option value="stable-diffusion">Stable Diffusion XL (FREE Alternative)</option>
+                        <option value="flux-replicate">FLUX via Replicate (Fast - $0.003/image)</option>
+                        <option value="openai">DALL-E 3 (Premium - $0.04/image)</option>
+                    </select>
+                    <!-- Model description will be inserted here by JavaScript -->
+                </div>
+                
+                <button class="btn" id="generate-btn">
+                    <i class="fas fa-magic"></i> Generate Educational Poster
+                </button>
+
+                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
+                    <h4 style="color: #856404; margin-bottom: 8px;">
+                        <i class="fas fa-info-circle"></i> How It Works
+                    </h4>
+                    <ol style="color: #856404; font-size: 0.9rem; margin-left: 20px;">
+                        <li>Enter your educational topic</li>
+                        <li>AI enhances your prompt for educational content</li>
+                        <li>Image is generated and optimized for monochrome display</li>
+                        <li>Download bitmap file for ESP32 OLED integration</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="preview-section">
+                <h2 class="section-title"><i class="fas fa-image"></i> Generated Poster</h2>
+                
+                <div class="image-preview">
+                    <div class="placeholder-text">
+                        <i class="fas fa-image"></i>
+                        <h3>Your poster will appear here</h3>
+                        <p>Fill in the details and click "Generate" to create your educational poster</p>
+                    </div>
+                    <img id="generated-image" alt="Generated educational poster" style="display: none;">
+                </div>
+                
+                <div class="image-info">
+                    <h3 style="color: #1a2a6c; margin-bottom: 15px;">
+                        <i class="fas fa-info"></i> Poster Details
+                    </h3>
+                    
+                    <div class="info-item">
+                        <span class="info-label">Subject:</span>
+                        <span class="info-value" id="info-subject">-</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">Target Age:</span>
+                        <span class="info-value" id="info-age">-</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">Generated:</span>
+                        <span class="info-value" id="info-date">-</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">Display Size:</span>
+                        <span class="info-value" id="info-resolution">128x64 (OLED)</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">AI Model:</span>
+                        <span class="info-value" id="info-model">-</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">Cost:</span>
+                        <span class="info-value" id="info-cost">-</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">Generation Time:</span>
+                        <span class="info-value" id="info-time">-</span>
+                    </div>
+                    
+                    <!-- Download section will be inserted here by JavaScript -->
+                </div>
+            </div>
         </div>
-        
-        <div class="form-group">
-            <label for="age-group">Age Group</label>
-            <select id="age-group">
-                <option value="0-6">0-6 (Simple concepts)</option>
-                <option value="7-12">7-12 (Elementary level)</option>
-                <option value="13-16">13-16 (High school level)</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label for="model">AI Model</label>
-            <p>Select the AI model for generation:</p>
-            <select id="model">
-                <option value="flux">FLUX (Fast & Low Cost)</option>
-                <option value="stable-diffusion">Stable Diffusion (Cost-Effective)</option>
-                <option value="openai">DALL-E 3 (High Quality)</option>
-            </select>
-        </div>
-        
-        <button class="btn" id="generate-btn">
-            <i class="fas fa-magic"></i> Generate Image
-        </button>
+
+        <footer>
+            <p><i class="fas fa-microchip"></i> Optimized for ESP32 OLED displays (128x64 monochrome)</p>
+            <p>Built with FastAPI, Groq, and free AI image generation models</p>
+        </footer>
     </div>
-    
-    </div>
+
+    <script src="/static/js/script.js"></script>
+</body>
+</html>
