@@ -1,2 +1,2 @@
 import os
-print("api key test print:", os.getenv("GROQ_API_KEY"))
+print("api key test print:", os.getenv("HUGGINGFACE_API_TOKEN"))

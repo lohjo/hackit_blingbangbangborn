@@ -1,14 +1,12 @@
-import os, requests
+import os
+from huggingface_hub import InferenceClient
 
-url = "https://api.groq.com/openai/v1/chat/completions"
-headers = {
-    "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
-    "Content-Type": "application/json"
-}
-data = {
-    "model": "llama-3.1-8b-instant",
-    "messages": [{"role": "user", "content": "Hello"}]
-}
+client = InferenceClient(
+    api_key=os.getenv("HUGGINGFACE_API_TOKEN"),
+)
 
-r = requests.post(url, headers=headers, json=data)
-print(r.status_code, r.text)
+# output is a PIL.Image object
+image = client.text_to_image(
+    "Astronaut riding a horse",
+    model="black-forest-labs/FLUX.1-schnell",
+)

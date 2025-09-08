@@ -18,6 +18,7 @@ from datetime import datetime
 import json
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+from huggingface_hub import InferenceClient
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -32,9 +33,6 @@ load_dotenv()
 # Environment variables
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-print("DEBUG: GROQ_API_KEY =", GROQ_API_KEY)
-print("DEBUG: HUGGINGFACE_API_TOKEN =", HUGGINGFACE_API_TOKEN)
 
 # Initialize clients
 groq_client = Groq(api_key=GROQ_API_KEY)
@@ -115,7 +113,7 @@ End with: "Negative: photorealistic, cluttered, small text, complex gradients, d
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Create the perfect image generation prompt for teaching {topic} to {age_group} year olds, optimized for monochrome display"}
             ],
-            model="llama-3.1-70b-versatile",  # Better instruction following
+            model="llama-3.1-8b-instant",  # Better instruction following
             temperature=0.3,  # Lower for more consistent results
             max_tokens=300
         )
@@ -192,94 +190,109 @@ def convert_to_oled_bitmap_enhanced(image_data: bytes) -> bytes:
 # COST-EFFECTIVE IMAGE GENERATION FUNCTIONS
 # =============================================================================
 
-async def generate_with_flux_schnell_free(prompt: str) -> bytes:
+def generate_with_flux_schnell_free(prompt: str):
     """
-    Generate image using FLUX.1-schnell via Hugging Face Serverless API (FREE)
-    Best cost-effective option with excellent instruction following
-    """
-    try:
-        logger.info("Generating image with FLUX.1-schnell (FREE via HF)...")
-        
-        api_url = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
-        headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
-        
-        payload = {
-            "inputs": prompt,
-            "parameters": {
-                "num_inference_steps": 4,  # Fast generation
-                "guidance_scale": 3.5,     # Good instruction following
-                "width": 1024,
-                "height": 1024,
-                "scheduler": "FlowMatchEulerDiscreteScheduler"
-            }
-        }
-        
-        # Make API request with retry logic
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                response = requests.post(api_url, headers=headers, json=payload, timeout=120)
-                response.raise_for_status()
-                
-                if response.headers.get("content-type", "").startswith("image"):
-                    return response.content
-                else:
-                    # Handle model loading time
-                    error_data = response.json()
-                    if "loading" in str(error_data).lower():
-                        logger.info(f"Model loading, attempt {attempt + 1}/{max_retries}")
-                        await asyncio.sleep(20)  # Wait for model to load
-                        continue
-                    else:
-                        raise Exception(f"API Error: {error_data}")
-                        
-            except requests.exceptions.Timeout:
-                if attempt < max_retries - 1:
-                    logger.info(f"Request timeout, retrying... ({attempt + 1}/{max_retries})")
-                    await asyncio.sleep(10)
-                    continue
-                else:
-                    raise Exception("Request timed out after all retries")
-                    
-        raise Exception("Failed to generate image after all retries")
-        
-    except Exception as e:
-        logger.error(f"FLUX generation error: {e}")
-        raise HTTPException(status_code=500, detail=f"FLUX generation failed: {str(e)}")
+    Generates an image using the FLUX.1-schnell model on Hugging Face.
 
-async def generate_with_stable_diffusion_free(prompt: str) -> bytes:
+    Args:
+        prompt (str): The text prompt for image generation.
+
+    Returns:
+        A PIL.Image object if successful, None otherwise.
     """
-    Fallback: Stable Diffusion via HF Serverless API (FREE)
-    """
+    print("Attempting to generate image with FLUX.1-schnell...")
     try:
-        logger.info("Generating image with Stable Diffusion XL (FREE)...")
-        
-        api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
-        headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
-        
-        payload = {
-            "inputs": prompt,
-            "parameters": {
-                "negative_prompt": "blurry, low quality, dark, cluttered, small text, photorealistic, complex gradients, fine details, adult complexity, low contrast, busy background, overlapping elements",
-                "num_inference_steps": 20,
-                "guidance_scale": 8.0,
-                "width": 1024,
-                "height": 1024
-            }
-        }
-        
-        response = requests.post(api_url, headers=headers, json=payload, timeout=120)
-        response.raise_for_status()
-        
-        if response.headers.get("content-type", "").startswith("image"):
-            return response.content
-        else:
-            error_data = response.json()
-            raise Exception(f"API Error: {error_data}")
-            
+        # Check for the required environment variable
+        hf_token = os.getenv("HUGGINGFACE_API_TOKEN")
+        if not hf_token:
+            print("ERROR: HF_TOKEN environment variable not found. Please set it.")
+            return None
+
+        # Initialize the InferenceClient with the correct provider and model
+        # The 'together' provider is often used for FLUX.1-schnell.
+        client = InferenceClient(
+            provider="together",
+            api_key=hf_token,
+        )
+
+        # Make the text-to-image API call
+        # The 'model' argument is specified here, but can also be passed in the client constructor.
+        image = client.text_to_image(
+            prompt,
+            model="black-forest-labs/FLUX.1-schnell",
+            # Add any additional parameters required by the model, e.g., negative_prompt, width, height
+        )
+
+        print("Successfully generated image with FLUX.1-schnell!")
+        return image
+
     except Exception as e:
-        logger.error(f"Stable Diffusion generation error: {e}")
-        raise HTTPException(status_code=500, detail=f"Stable Diffusion generation failed: {str(e)}")
+        print(f"ERROR: FLUX generation failed: {e}")
+        return None
+
+def generate_with_stable_diffusion_free(prompt: str):
+    """
+    Generates an image using the Stable Diffusion XL model on Hugging Face.
+
+    Args:
+        prompt (str): The text prompt for image generation.
+
+    Returns:
+        A PIL.Image object if successful, None otherwise.
+    """
+    print("Attempting to generate image with Stable Diffusion XL...")
+    try:
+        # Check for the required environment variable
+        hf_token = os.getenv("HUGGINGFACE_API_TOKEN")
+        
+        if not hf_token:
+            print("ERROR: HF_TOKEN environment variable not found. Please set it.")
+            return None
+
+        # Initialize the InferenceClient. The default provider works for many models.
+        client = InferenceClient(
+            api_key=hf_token,
+        )
+
+        # Make the text-to-image API call with the SDXL model
+        image = client.text_to_image(
+            prompt,
+            model="stabilityai/stable-diffusion-xl-base-1.0",
+            # SDXL works best with a specific image size, so it's good practice to specify it.
+            width=1024,
+            height=1024
+        )
+        print("Successfully generated image with Stable Diffusion XL!")
+        return image
+
+    except Exception as e:
+        print(f"ERROR: Stable Diffusion XL generation failed: {e}")
+        return None
+
+if __name__ == '__main__':
+    # This is an example of how you would use the functions.
+    # Make sure to set your HF_TOKEN environment variable before running.
+    # For example, in your terminal: export HF_TOKEN="your_hugging_face_token_here"
+    # or if you are on Windows: set HF_TOKEN="your_hugging_face_token_here"
+
+    test_prompt = "A high-contrast black and white poster about the water cycle, vector art style, clean and simple design"
+
+    # Test FLUX.1-schnell generation
+    flux_image = generate_with_flux_schnell_free(test_prompt)
+    if flux_image:
+        # You can save the image or process it further here
+        flux_image.save("water_cycle_flux.png")
+        print("Saved image as water_cycle_flux.png")
+
+    print("-" * 20)
+
+    # Test Stable Diffusion XL generation
+    sdxl_image = generate_with_stable_diffusion_free(test_prompt)
+    if sdxl_image:
+        sdxl_image.save("water_cycle_sdxl.png")
+        print("Saved image as water_cycle_sdxl.png")
+
+
 
 # =============================================================================
 # ENHANCED API ENDPOINTS
@@ -305,18 +318,26 @@ async def generate_educational_poster(request: PosterRequest, background_tasks: 
         
         # Generate image with cost-effective model
         if request.model.lower() == "flux-schnell":
-            image_data = await generate_with_flux_schnell_free(enhanced_prompt)
+            image = generate_with_flux_schnell_free(enhanced_prompt)
             cost_estimate = "FREE (HF Serverless)"
         elif request.model.lower() == "stable-diffusion":
-            image_data = await generate_with_stable_diffusion_free(enhanced_prompt)
+            image = generate_with_stable_diffusion_free(enhanced_prompt)
             cost_estimate = "FREE (HF Serverless)"
         else:
-            # Default to most cost-effective
-            image_data = await generate_with_flux_schnell_free(enhanced_prompt)
+            image = generate_with_flux_schnell_free(enhanced_prompt)
             cost_estimate = "FREE (HF Serverless)"
-        
+
+        if image is None:
+            raise HTTPException(status_code=500, detail="Image generation failed.")
+
+        # Convert PIL Image to bytes (PNG format)
+        img_buffer = io.BytesIO()
+        image.save(img_buffer, format="PNG")
+        img_buffer.seek(0)
+        image_bytes = img_buffer.getvalue()
+
         # Convert to optimized OLED bitmap
-        oled_bitmap = convert_to_oled_bitmap_enhanced(image_data)
+        oled_bitmap = convert_to_oled_bitmap_enhanced(image_bytes)
         
         # Generate unique ID and cache
         image_id = f"{request.topic.replace(' ', '_').replace('/', '_')}_{request.age_group}_{request.model}_{int(datetime.now().timestamp())}"
