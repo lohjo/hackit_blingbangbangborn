@@ -1,7 +1,8 @@
 # app/main.py - Enhanced Cost-Effective Educational Poster Generator
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse, Response
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
+from fastapi.responses import JSONResponse, Response, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import requests
 from groq import Groq
@@ -15,16 +16,25 @@ import asyncio
 import logging
 from datetime import datetime
 import json
+from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Educational Poster Generator - Cost Effective", version="2.0.0")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+load_dotenv()
 
 # Environment variables
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+print("DEBUG: GROQ_API_KEY =", GROQ_API_KEY)
+print("DEBUG: HUGGINGFACE_API_TOKEN =", HUGGINGFACE_API_TOKEN)
 
 # Initialize clients
 groq_client = Groq(api_key=GROQ_API_KEY)
@@ -470,6 +480,10 @@ async def test_complete_workflow():
             "total_cost": "FREE (All generated using HF Serverless API)"
         }
     }
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 if __name__ == "__main__":
     import uvicorn
