@@ -1,11 +1,12 @@
 // app/static/js/script.js
 
+
 document.addEventListener('DOMContentLoaded', function() {
     const topicInput = document.getElementById('topic');
     const ageGroupSelect = document.getElementById('age-group');
     const modelSelect = document.getElementById('model');
     const generateBtn = document.getElementById('generate-btn');
-    
+   
     // Model descriptions for better UX
     const modelDescriptions = {
         'flux': {
@@ -15,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         'stable-diffusion': {
             text: 'Stable Diffusion XL via HuggingFace - Reliable fallback option. Completely free!',
-            badge: 'FREE', 
+            badge: 'FREE',
             badgeClass: ''
         },
         'flux-replicate': {
@@ -29,48 +30,49 @@ document.addEventListener('DOMContentLoaded', function() {
             badgeClass: 'expensive'
         }
     };
-    
+   
     // Update model description when selection changes
     function updateModelDescription() {
         const selectedModel = modelSelect.value;
         const description = modelDescriptions[selectedModel];
-        
+       
         let descriptionDiv = document.querySelector('.model-description');
         if (!descriptionDiv) {
             descriptionDiv = document.createElement('div');
             descriptionDiv.className = 'model-description';
             modelSelect.parentNode.appendChild(descriptionDiv);
         }
-        
+       
         descriptionDiv.innerHTML = `
             ${description.text}
             <span class="cost-badge ${description.badgeClass}">${description.badge}</span>
         `;
     }
-    
+   
     // Initialize model description
     updateModelDescription();
     modelSelect.addEventListener('change', updateModelDescription);
-    
+   
     // Generate button functionality
     generateBtn.addEventListener('click', async function() {
         const topic = topicInput.value.trim();
         const ageGroup = ageGroupSelect.value;
         const model = modelSelect.value;
-        
+       
         if (!topic) {
             alert('Please enter a topic.');
             return;
         }
 
+
         const originalText = generateBtn.innerHTML;
         const placeholder = document.querySelector('.placeholder-text');
         const image = document.getElementById('generated-image');
-        
+       
         // Show loading state
         generateBtn.disabled = true;
         generateBtn.innerHTML = '<div class="loading-spinner"></div> Generating...';
-        
+       
         if (placeholder) {
             placeholder.style.display = 'flex';
             placeholder.innerHTML = `
@@ -80,15 +82,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p>This may take a few moments.</p>
             `;
         }
-        
+       
         if (image) {
             image.style.display = 'none';
         }
 
+
         try {
             // Step 1: Generate poster
             console.log('Starting poster generation...', { topic, ageGroup, model });
-            
+           
             const response = await fetch('/generate-poster', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -101,14 +104,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             });
 
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
                 throw new Error(errorData.detail || `Server error (${response.status})`);
             }
 
+
             const data = await response.json();
             console.log('Generation successful:', data);
-            
+           
             // Update info panel
             const infoElements = {
                 'info-subject': topic,
@@ -118,44 +123,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 'info-cost': data.cost_estimate || modelDescriptions[model].badge,
                 'info-time': `${data.generation_time.toFixed(1)}s`
             };
-            
+           
             Object.entries(infoElements).forEach(([id, value]) => {
                 const element = document.getElementById(id);
                 if (element) element.textContent = value;
             });
 
+
             // Step 2: Display preview image
             const imageUrl = `/poster/${data.image_id}/preview`;
-            
+           
             if (image) {
                 image.onload = () => {
                     console.log('Image loaded successfully');
                     generateBtn.disabled = false;
                     generateBtn.innerHTML = originalText;
-                    
+                   
                     if (placeholder) placeholder.style.display = 'none';
                     image.style.display = 'block';
                 };
-                
+               
                 image.onerror = () => {
                     throw new Error('Failed to load generated image');
                 };
-                
+               
                 image.src = imageUrl;
                 image.alt = `Educational poster: ${topic} (Age: ${ageGroup})`;
             }
-            
+           
             // Add download link for ESP32
             updateDownloadInfo(data.image_id);
-            
+           
         } catch (error) {
             console.error('Generation failed:', error);
-            
+           
             generateBtn.disabled = false;
             generateBtn.innerHTML = originalText;
-            
+           
             if (image) image.style.display = 'none';
-            
+           
             if (placeholder) {
                 placeholder.style.display = 'flex';
                 placeholder.innerHTML = `
@@ -167,11 +173,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
-    
+   
     function updateDownloadInfo(imageId) {
         const downloadUrl = `/poster/${imageId}`;
         const previewUrl = `/poster/${imageId}/preview`;
-        
+       
         // Add or update download section
         let downloadSection = document.querySelector('.download-section');
         if (!downloadSection) {
@@ -182,13 +188,13 @@ document.addEventListener('DOMContentLoaded', function() {
             downloadSection.style.background = '#e8f5e8';
             downloadSection.style.borderRadius = '8px';
             downloadSection.style.border = '1px solid #4caf50';
-            
+           
             const infoPanel = document.querySelector('.image-info');
             if (infoPanel) {
                 infoPanel.appendChild(downloadSection);
             }
         }
-        
+       
         downloadSection.innerHTML = `
             <h4 style="color: #2e7d32; margin-bottom: 10px;">
                 <i class="fas fa-download"></i> ESP32 Ready
